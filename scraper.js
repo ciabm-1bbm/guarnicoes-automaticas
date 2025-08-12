@@ -5,45 +5,56 @@ const fs = require('fs').promises;
 // Função principal que executa a mágica
 async function fazerMagica() {
     console.log('Iniciando a mágica de hoje...');
-    // Inicia o navegador invisível. Os 'args' são para compatibilidade com o ambiente do GitHub.
     const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
 
     try {
         // 1. NAVEGAÇÃO E LOGIN
-        console.log('Acessando o site dos bombeiros...');
-        // *** ATENÇÃO: Esta URL é um EXEMPLO. Precisaremos colocar a URL correta da página de login. ***
-        await page.goto('https://sistemas.cbm.rs.gov.br/sisop/login.php', { waitUntil: 'networkidle2' });
+        console.log('Acessando o site e193...');
+        await page.goto('https://e193.cbm.rs.gov.br/', { waitUntil: 'networkidle2' });
 
-        // *** ATENÇÃO: Os nomes '#login' e '#senha' SÃO EXEMPLOS. Precisaremos ajustá-los para os nomes corretos. ***
         console.log('Realizando login...');
-        await page.type('#login', process.env.BOMBEIROS_USER); // Pega o usuário do GitHub Secrets
-        await page.type('#senha', process.env.BOMBEIROS_PASS); // Pega a senha do GitHub Secrets
+        await page.type('input[name="login"]', process.env.BOMBEIROS_USER);
+        await page.type('input[name="senha"]', process.env.BOMBEIROS_PASS);
         
-        // Clica no botão de login e espera a página carregar
         await page.click('button[type="submit"]');
         await page.waitForNavigation({ waitUntil: 'networkidle2' });
         console.log('Login realizado com sucesso!');
 
-        // 2. EXTRAÇÃO DOS DADOS
-        console.log('Navegando para a página da escala...');
-        // *** ATENÇÃO: Esta URL também é um EXEMPLO. ***
-        await page.goto('https://sistemas.cbm.rs.gov.br/sisop/relatorios/escala_diaria_guarnicoes.php', { waitUntil: 'networkidle2' });
+        // 2. NAVEGAÇÃO ATÉ A ESCALA (COM OS PASSOS CORRIGIDOS)
+        console.log('Passo 1: Clicando no menu "Guarnição"...');
+        // Usaremos um seletor que busca um link que contenha o texto "Guarnição"
+        const guarnicaoLinkSelector = 'a.nav-link:has-text("Guarnição")';
+        await page.waitForSelector(guarnicaoLinkSelector);
+        await page.click(guarnicaoLinkSelector);
         
+        console.log('Passo 2: Clicando no submenu "Guarnição Ordinária"...');
+        // O link para a escala que já tínhamos provavelmente está dentro deste submenu
+        const ordinariaLinkSelector = 'a[href="relatorios/escala_diaria_guarnicoes.php"]';
+        await page.waitForSelector(ordinariaLinkSelector);
+        await page.click(ordinariaLinkSelector);
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+        
+        console.log('Passo 3: Clicando em "FILTRAR" para carregar a escala do dia...');
+        // Clica no botão de filtrar para garantir que os dados do dia sejam carregados
+        const filtrarButtonSelector = 'button:has-text("Filtrar")';
+        await page.waitForSelector(filtrarButtonSelector);
+        await page.click(filtrarButtonSelector);
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+        console.log('Página da escala carregada e filtrada!');
+        
+        // 3. EXTRAÇÃO DOS DADOS
         console.log('Extraindo dados da tabela...');
-        // Esta função é executada dentro da página do navegador para pegar os dados
         const dadosBrutos = await page.evaluate(() => {
-            const linhas = Array.from(document.querySelectorAll('table tbody tr')); // Pega todas as linhas da tabela
+            const linhas = Array.from(document.querySelectorAll('table.table-bordered tbody tr'));
             const dados = [];
             let pelotaoAtual = '';
 
             linhas.forEach(linha => {
-                // Verifica se a linha é um título de pelotão
-                if (linha.querySelector('th.header-relatorio')) {
-                    pelotaoAtual = linha.querySelector('th.header-relatorio').innerText.trim();
-                } 
-                // Verifica se é uma linha de dados de militar
-                else if (linha.querySelectorAll('td').length > 2) {
+                const th = linha.querySelector('th.header-relatorio');
+                if (th) {
+                    pelotaoAtual = th.innerText.trim();
+                } else if (linha.querySelectorAll('td').length >= 5) {
                     const celulas = linha.querySelectorAll('td');
                     dados.push({
                         pelotao: pelotaoAtual,
@@ -51,26 +62,26 @@ async function fazerMagica() {
                         id: celulas[1].innerText.trim(),
                         nome: celulas[2].innerText.trim(),
                         funcao: celulas[3].innerText.trim(),
+                        turno: celulas[4].innerText.trim(),
+                        inicio: celulas[5].innerText.trim(),
+                        fim: celulas[6].innerText.trim(),
                     });
                 }
             });
             return dados;
         });
 
-        // 3. FORMATAÇÃO DOS DADOS
+        // 4. FORMATAÇÃO DOS DADOS
         console.log('Formatando os dados com nossas Regras de Excelência...');
-        const guarnicoesData = formatarDados(dadosBrutos); // Nossa função de formatação
+        const guarnicoesData = formatarDados(dadosBrutos);
         const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
 
-        // 4. ATUALIZAÇÃO DO ARQUIVO HTML
+        // 5. ATUALIZAÇÃO DO ARQUIVO HTML
         console.log('Lendo o template do site...');
         const templateHtml = await fs.readFile('template.html', 'utf-8');
 
         console.log('Injetando dados atualizados...');
-        // Substitui o marcador de data no título
         let finalHtml = templateHtml.replace(/\(\d{2}\/[A-Za-z]{3}\/\d{4}\)/, `(${hoje}/${new Date().getFullYear()})`);
-        
-        // Substitui o marcador do objeto de dados
         finalHtml = finalHtml.replace(
             'const guarnicoesData = {}', 
             `const guarnicoesData = ${JSON.stringify(guarnicoesData, null, 4)}`
@@ -81,7 +92,7 @@ async function fazerMagica() {
 
     } catch (error) {
         console.error('A mágica falhou:', error);
-        process.exit(1); // Encerra com erro para o GitHub saber que falhou
+        process.exit(1);
     } finally {
         await browser.close();
         console.log('Mágica concluída!');
@@ -90,36 +101,75 @@ async function fazerMagica() {
 
 // Função para aplicar nossas regras de excelência
 function formatarDados(dadosBrutos) {
-    const dadosFinais = {};
-    const ordemExibicao = ["OFICIAL DE SERVIÇO", "AÇORIANOS", "TERESÓPOLIS", "ASSUNÇÃO", "RESTINGA", "BELÉM NOVO", "PASSO D'AREIA", "FLORESTA", "PARTENON"];
-
-    // Aqui entra toda a nossa lógica de agrupar, formatar e filtrar...
-    // Esta é uma versão simplificada que teremos que refinar
+    const dadosFormatados = {};
+    const pelotaoOrdem = ["OFICIAL DE SERVIÇO", "AÇORIANOS", "TERESÓPOLIS", "ASSUNÇÃO", "RESTINGA", "BELÉM NOVO", "PASSO D'AREIA", "FLORESTA", "PARTENON"];
     
-    // Agrupa todos os militares por pelotão
-    const porPelotao = {};
-    dadosBrutos.forEach(militar => {
-        // Exemplo de como extrair o nome do pelotão da string do PDF
-        const nomePelotao = extrairNomePelotao(militar.pelotao);
-        if (!porPelotao[nomePelotao]) {
-            porPelotao[nomePelotao] = [];
+    function getNomePelotao(rawName) {
+        for (const nome of pelotaoOrdem) {
+            // Usa toUpperCase para garantir a correspondência (ex: "passo d'areia" e "PASSO D'AREIA")
+            if (rawName.toUpperCase().includes(nome.toUpperCase())) return nome;
         }
-        porPelotao[nomePelotao].push(militar);
+        if (rawName.includes('ESTADO MAIOR') || rawName.includes('AODC')) return "OFICIAL DE SERVIÇO";
+        return null;
+    }
+
+    dadosBrutos.forEach(militar => {
+        const nomePelotao = getNomePelotao(militar.pelotao);
+        if (!nomePelotao) return;
+
+        if (!dadosFormatados[nomePelotao]) {
+            dadosFormatados[nomePelotao] = {};
+        }
+
+        let viaturaKey = militar.viatura.split(' ')[0].replace(/-/g, '_');
+        let viaturaDisplay = militar.viatura.split(' ')[0];
+
+        if (viaturaKey.startsWith('AEM_') || viaturaKey.startsWith('AT_')) {
+            const existente = dadosFormatados[nomePelotao]['AEM_E_AT'];
+            if (existente) {
+                viaturaDisplay = existente.viatura_display + " e " + viaturaDisplay;
+                existente.viatura_display = viaturaDisplay;
+            } else {
+                 viaturaDisplay = `${viaturaDisplay} (Viatura Leve)`;
+            }
+            viaturaKey = 'AEM_E_AT';
+        }
+
+        if (!dadosFormatados[nomePelotao][viaturaKey]) {
+             dadosFormatados[nomePelotao][viaturaKey] = {
+                viatura_display: viaturaDisplay,
+                militares: [],
+                turno: "24h",
+                inicio_data: militar.inicio.split(' ')[0],
+                inicio_hora: militar.inicio.split(' ')[1],
+                fim_data: militar.fim.split(' ')[0],
+                fim_hora: militar.fim.split(' ')[1],
+            };
+        }
+        
+        let funcaoFormatada = militar.funcao;
+        if (militar.turno !== '24' && militar.inicio && militar.fim) {
+            const inicio = militar.inicio.split(' ')[1];
+            const fim = militar.fim.split(' ')[1];
+            funcaoFormatada += ` (${inicio}-${fim})`;
+            dadosFormatados[nomePelotao][viaturaKey].turno = "Misto";
+        }
+        
+        if (nomePelotao === "OFICIAL DE SERVIÇO") {
+            if (funcaoFormatada.includes('SUPERVISOR')) funcaoFormatada = 'OFICIAL SUPERVISOR (Alfa 4)';
+            if (funcaoFormatada.includes('COMANDANTE DE SOCORRO') || funcaoFormatada.includes('OFICIAL DE SV')) funcaoFormatada = 'COMANDANTE DE SOCORRO (Alfa 5)';
+            if ((funcaoFormatada.includes('MOTORISTA') || funcaoFormatada.includes('CONDUTOR')) && militar.pelotao.includes('ESTADO MAIOR')) funcaoFormatada = 'COV DO ALFA 5';
+            if ((funcaoFormatada.includes('MOTORISTA') || funcaoFormatada.includes('CONDUTOR')) && militar.pelotao.includes('AODC')) funcaoFormatada = 'COV DO ALFA 4';
+        }
+        
+        dadosFormatados[nomePelotao][viaturaKey].militares.push({
+            funcao: funcaoFormatada,
+            nome: militar.nome
+        });
     });
 
-    // Depois de agrupar, precisaríamos de mais lógica para agrupar por viatura,
-    // unificar AEM/AT, formatar os turnos, etc.
-    // Por enquanto, esta é uma estrutura básica para começarmos.
-    
-    return porPelotao; // Retorna os dados agrupados
+    return dadosFormatados;
 }
-
-function extrairNomePelotao(textoCompleto) {
-    // Função simples para pegar o nome do pelotão (ex: "TERESÓPOLIS")
-    const partes = textoCompleto.split('/');
-    return partes[partes.length - 1].trim();
-}
-
 
 // Inicia a execução do robô
 fazerMagica();
