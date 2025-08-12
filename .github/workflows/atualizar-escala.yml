@@ -1,0 +1,39 @@
+name: Atualização Diária da Escala de Serviço
+
+on:
+  schedule:
+    # Agenda para rodar todos os dias às 12:00 UTC (9:00 no Horário de Brasília)
+    - cron: '0 12 * * *'
+  # Permite também rodar manualmente pela interface do GitHub
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install puppeteer
+
+      - name: Run Scraper Script
+        run: node scraper.js
+        env:
+          BOMBEIROS_USER: ${{ secrets.BOMBEIROS_USER }}
+          BOMBEIROS_PASS: ${{ secrets.BOMBEIROS_PASS }}
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'Atualização automática da escala do dia'
