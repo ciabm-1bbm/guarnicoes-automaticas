@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guarnições de Serviço - 1º BBM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bombeiros-orange': '#FF8C00',
+                        'bombeiros-yellow': '#FFD700',
+                        'cbmrs-blue': '#1A5276',
+                        'fire-red': '#DC2626',
+                        'light-blue': '#3B82F6',
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+        }
+        .hero-background {
+            background-image: url('images/background.jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            z-index: 0;
+        }
+        .hero-background::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: -1;
+        }
+        .shortcut-button-blue {
+            transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: rgba(59, 130, 246, 0.3);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            height: 50px; padding: 4px; color: white;
+            font-size: 9px; font-weight: 700; line-height: 1.2;
+            word-break: break-word; hyphens: auto; text-decoration: none;
+        }
+        .shortcut-button-blue:hover {
+            background-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+            transform: translateY(-5px);
+        }
+        .shortcut-button-blue i {
+            color: white; font-size: 1.2rem; margin-bottom: 0.2rem;
+        }
+        .guarnicao-button {
+            transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: rgba(255, 215, 0, 0.3);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            padding: 0.5rem; min-height: 140px; position: relative;
+            cursor: pointer; overflow: hidden;
+        }
+        .guarnicao-button:hover {
+            background-color: rgba(255, 215, 0, 0.5);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+            position: relative; top: -3px; z-index: 10;
+        }
+        .guarnicao-oficial {
+            background-color: rgba(255, 140, 0, 0.5);
+            border-color: rgba(255, 165, 0, 0.7);
+        }
+        .guarnicao-oficial:hover {
+            background-color: rgba(255, 140, 0, 0.7);
+        }
+        .button-visible-content {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; height: 100%; width: 100%;
+        }
+        .guarnicao-name-only {
+            font-size: 0.9rem; font-weight: 700; color: white;
+            line-height: 1.2; margin-bottom: 0.3rem;
+        }
+        .guarnicao-arrow {
+            color: white; font-size: 1.2rem; transition: transform 0.3s ease;
+        }
+        .guarnicao-button.active .guarnicao-arrow { transform: rotate(180deg); }
+        .guarnicao-details-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); display: none;
+            align-items: center; justify-content: center; z-index: 10000;
+        }
+        .guarnicao-details-overlay.active { display: flex; }
+        .guarnicao-details-box {
+            background-color: #1F2937; color: #E5E7EB; padding: 1rem;
+            border-radius: 0.75rem; max-width: 320px; width: 90%;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5); position: relative;
+            transform: translateY(20px); transition: transform 0.3s ease;
+        }
+        .guarnicao-details-overlay.active .guarnicao-details-box { transform: translateY(0); }
+        .guarnicao-details-box .close-button {
+            position: absolute; top: 0.5rem; right: 0.7rem; background: none;
+            border: none; color: #E5E7EB; font-size: 1.8rem;
+            cursor: pointer; transition: color 0.3s ease;
+        }
+        .guarnicao-details-box .close-button:hover { color: #DC2626; }
+        .modal-quartel-title {
+            font-size: 1.2rem; font-weight: bold; color: #bombeiros-orange;
+            margin-bottom: 0.3rem; text-align: center;
+        }
+        .modal-viatura-subtitle {
+            font-size: 0.9rem; font-weight: bold; color: #FFD700;
+            margin-bottom: 0.8rem; text-align: center;
+        }
+        .modal-personnel-section {
+            margin-bottom: 1rem; border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 0.8rem;
+        }
+        .modal-personnel-section .person-role-modal {
+            font-size: 0.8rem; line-height: 1.2; margin-bottom: 0.1rem;
+            display: flex; justify-content: space-between; flex-wrap: wrap;
+        }
+        .modal-personnel-section .person-role-modal strong {
+            font-weight: bold; color: #4A90E2; flex-shrink: 0; margin-right: 0.5rem;
+        }
+        .modal-personnel-section .person-role-modal span {
+            font-weight: normal; color: #E5E7EB; text-align: right; flex-grow: 1;
+        }
+        .modal-turn-details-section {
+            border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.8rem;
+            text-align: center;
+        }
+        .modal-turn-details-section .turn-type-label-modal {
+            font-size: 0.8rem; font-weight: bold; color: #FFD700; margin-bottom: 0.4rem;
+        }
+        .modal-turn-details-section .duty-detail-modal {
+            font-size: 0.7rem; color: #A0AEC0; margin-bottom: 0.1rem;
+        }
+        .guarnicoes-por-quartel-grid {
+            display: grid; grid-template-columns: repeat(9, 140px);
+            gap: 1rem; justify-content: center;
+            max-width: calc(9 * 140px + 8 * 1rem); margin: 0 auto;
+        }
+        .quartel-column {
+            display: flex; flex-direction: column; gap: 0.5rem;
+            align-items: center; width: 100%;
+        }
+        @media (max-width: 1543px) { .guarnicoes-por-quartel-grid { grid-template-columns: repeat(7, 140px); max-width: calc(7 * 140px + 6 * 1rem); } }
+        @media (max-width: 1279px) { .guarnicoes-por-quartel-grid { grid-template-columns: repeat(5, 140px); max-width: calc(5 * 140px + 4 * 1rem); } }
+        @media (max-width: 1023px) { .guarnicoes-por-quartel-grid { grid-template-columns: repeat(4, 140px); max-width: calc(4 * 140px + 3 * 1rem); } }
+        @media (max-width: 767px) { .guarnicoes-por-quartel-grid { grid-template-columns: repeat(3, 140px); max-width: calc(3 * 140px + 2 * 1rem); } }
+        @media (max-width: 639px) { .guarnicoes-por-quartel-grid { grid-template-columns: repeat(2, 140px); max-width: calc(2 * 140px + 1 * 1rem); } }
+        .main-container-fluid {
+            max-width: 100%; padding-left: 1rem; padding-right: 1rem;
+            margin-left: auto; margin-right: auto;
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col">
+
+<div class="flex-grow hero-background">
+    <header class="py-4 shadow-lg z-10">
+        <div class="container mx-auto px-4 text-center">
+            <div class="flex flex-wrap items-center justify-center gap-4">
+                <div class="bg-cbmrs-blue p-2 rounded-lg">
+                    <img src="https://www.bombeiros.rs.gov.br/themes/sitecbmrs/images/logos/logo.png" alt="Logo CBMRS" class="h-12 md:h-16 w-auto">
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-extrabold text-bombeiros-yellow">
+                        Página das Guarnições de Serviço do 1º BBM
+                    </h1>
+                </div>
+                <div class="bg-cbmrs-blue p-2 rounded-lg">
+                    <img src="images/brasao_1BBM_PARA_site.png" alt="Brasão 1º BBM" class="h-12 md:h-16 w-auto">
+                </div>
+            </div>
+            <p class="text-sm text-gray-300 max-w-2xl mx-auto mt-2">
+                Elaborada para acesso do Efetivo Operacional, unificação de links e procedimentos atinentes ao serviço diário.
+            </p>
+        </div>
+    </header>
+
+    <main class="flex-grow py-6 px-4">
+        <div class="main-container-fluid">
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-light-blue mb-4 text-center">
+                    <i class="fas fa-external-link-alt mr-2"></i> LINKS RÁPIDOS DE ACESSO:
+                </h2>
+                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-4 justify-center">
+                    <a href="https://www.google.com/maps/d/u/0/viewer?mid=1yI6n4-YfxnX6tNdQdoyH5tfLwbs&g_ep=CAESCjExLjE0My4zMDUYACDdYiqZASw5NDIzODM0MCw5NDIwMzMyNCw0NzA3NTQ4OSw5NDIxNjQyNiw5NDIxNjQxMyw5NDIyMzI5OSw5NDIxNjQxMyw5NDIxMjQ5Niw5NDIwNzM5NCw5NDIwNzUwNiw5NDIwODUwNiw5NDIxNzUyMyw5NDIxODY1Myw5NDIyOTgzOSw0NzA4NzExOCw0NzA4NDM5Myw5NDIxMzIwMEICQlI%3D&shorturl=1&ll=-30.079202709120683%2C-51.0992469928464&z=13" class="shortcut-button-blue"><i class="fas fa-link"></i><span>MAPA DE HIDRANTES E SUB ÁREAS DOS PELOTÕES</span></a>
+                    <a href="https://docs.google.com/document/d/1j3rt0UlxHjzJnnM4n0u-0j-vpE-3VlFP/edit" class="shortcut-button-blue"><i class="fas fa-link"></i><span>FICHA DE ACIDENTE DE VTR</span></a>
+                    <a href="https://drive.google.com/drive/u/1/folders/17pPNkLr0lQtMeFeLTdh1J5lGpu0S3yHq" class="shortcut-button-blue"><i class="fas fa-link"></i><span>PROCEDIMENTO OPERACIONAL PADRÃO</span></a>
+                    <a href="https://drive.google.com/drive/u/1/folders/1ZB4jtNcUsls__DPG_WvJ0FhZejW4Ou1U" class="shortcut-button-blue"><i class="fas fa-link"></i><span>TROCAS DE SERVIÇO</span></a>
+                    <a href="#" class="shortcut-button-blue"><i class="fas fa-link"></i><span>PROJETO TREINAMENTO DE EVACUAÇÃO ESCOLAR</span></a>
+                    <a href="https://e193.cbm.rs.gov.br/" class="shortcut-button-blue"><i class="fas fa-link"></i><span>E-193</span></a>
+                    <a href="https://docs.google.com/spreadsheets/d/1fJGyYv9-KRxizh_LIDV59pUHGT90RBg14PXJZzKjs0c/edit?gid=396999060#gid=396999060" class="shortcut-button-blue"><i class="fas fa-link"></i><span>INSTRUÇÃO DIÁRIA</span></a>
+                    <a href="https://drive.google.com/drive/u/1/folders/1i1GOOjiXGqAAu4eTUpTHTZtxUjZBGDLM" class="shortcut-button-blue"><i class="fas fa-link"></i><span>PROJETO BOMBEIRO NA ESCOLA</span></a>
+                </div>
+            </div>
+
+            <hr class="border-gray-600 my-8">
+            
+            <h2 class="text-xl font-bold text-bombeiros-orange mb-4 text-center">
+                GUARNIÇÕES DE SERVIÇO EM PORTO ALEGRE - 1º BBM (08/Ago/2025)
+            </h2>
+            <p class="text-gray-300 text-center mb-6 text-sm">
+                Guarnições de Serviço em Porto Alegre. Organizadas por pelotão e viatura, clique nos ícones para mais detalhes.
+            </p>
+
+            <div id="guarnicoes-grid" class="guarnicoes-por-quartel-grid"></div>
+            <p class="text-gray-300 text-center mb-4 text-sm">
+                OBS.: Última atualização: <span id="data-atualizacao"></span>, por CIABM.
+            </p>
+        </div>
+    </main>
+</div>
+
+<footer class="bg-gray-800 text-gray-400 py-3 z-10">
+    <div class="container mx-auto px-4 text-center text-xs">
+        <p>© 2025 Companhia de Bombeiro Militar - 1º BBM. Desenvolvido por Gustavo Medeiros.</p>
+        <p class="mt-1">
+            Para demais assuntos acesse a
+            <a href="https://www.bombeiros.rs.gov.br/inicial" target="_blank" class="text-cbmrs-blue hover:underline">Página do CBMRS na Internet.</a>
+        </p>
+    </div>
+</footer>
+
+<div id="guarnicao-details-overlay" class="guarnicao-details-overlay">
+    <div class="guarnicao-details-box">
+        <button class="close-button" onclick="closeModal()">×</button>
+        <div id="modal-content"></div>
+    </div>
+</div>
+
+<script>
+    const guarnicoesData = {}; // <<-- O ROBÔ VAI SUBSTITUIR ESTA LINHA
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const guarnicoesGrid = document.getElementById('guarnicoes-grid');
+        const modalOverlay = document.getElementById('guarnicao-details-overlay');
+        const modalContentDiv = document.getElementById('modal-content');
+        const dataAtualizacaoSpan = document.getElementById('data-atualizacao');
+
+        function formatarDataHoraAtual() {
+            const agora = new Date();
+            const dia = String(agora.getDate());
+            const mes = agora.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
+            const horas = String(agora.getHours()).padStart(2, '0');
+            const minutos = String(agora.getMinutes()).padStart(2, '0');
+            return `${dia}/${mes} às ${horas}:${minutos}`;
+        }
+
+        if(dataAtualizacaoSpan) {
+            dataAtualizacaoSpan.textContent = formatarDataHoraAtual();
+        }
+
+        const pelotaoOrder = [
+            "OFICIAL DE SERVIÇO",
+            "AÇORIANOS",
+            "TERESÓPOLIS",
+            "ASSUNÇÃO",
+            "RESTINGA",
+            "BELÉM NOVO",
+            "PASSO D'AREIA",
+            "FLORESTA",
+            "PARTENON"
+        ];
+
+        pelotaoOrder.forEach(pelotaoName => {
+            const pelotaoData = guarnicoesData[pelotaoName];
+            if (pelotaoData) {
+                const quartelColumn = document.createElement('div');
+                quartelColumn.classList.add('quartel-column');
+                const guarnicaoButton = document.createElement('div');
+                guarnicaoButton.classList.add('guarnicao-button');
+                
+                if (pelotaoName === 'OFICIAL DE SERVIÇO') {
+                    guarnicaoButton.classList.add('guarnicao-oficial');
+                }
+
+                guarnicaoButton.setAttribute('data-pelotao-name', pelotaoName);
+                const buttonVisibleContent = document.createElement('div');
+                buttonVisibleContent.classList.add('button-visible-content');
+                buttonVisibleContent.innerHTML = `<span class="guarnicao-name-only">${pelotaoName}</span><i class="fas fa-chevron-down guarnicao-arrow"></i>`;
+                guarnicaoButton.appendChild(buttonVisibleContent);
+                const modalSourceData = document.createElement('div');
+                modalSourceData.classList.add('modal-source-data');
+                modalSourceData.style.display = 'none';
+                let modalHtml = `<h3 class="modal-quartel-title">${pelotaoName}</h3>`;
+                for (const viaturaKey in pelotaoData) {
+                    const viaturaData = pelotaoData[viaturaKey];
+                    modalHtml += `<h4 class="modal-viatura-subtitle">${viaturaData.viatura_display}</h4><div class="modal-personnel-section">`;
+                    viaturaData.militares.forEach(militar => {
+                        modalHtml += `<div class="person-role-modal"><strong>${militar.funcao}:</strong> <span>${militar.nome}</span></div>`;
+                    });
+                    modalHtml += `</div><div class="modal-turn-details-section"><div class="turn-type-label-modal">Turno: ${viaturaData.turno}</div><div class="duty-detail-modal">Início: ${viaturaData.inicio_data} - das ${viaturaData.inicio_hora}</div><div class="duty-detail-modal">Fim: ${viaturaData.fim_data} - às ${viaturaData.fim_hora}</div></div><hr style="border-top: 1px dashed rgba(255,255,255,0.1); margin: 1rem 0;">`;
+                }
+                modalSourceData.innerHTML = modalHtml;
+                guarnicaoButton.appendChild(modalSourceData);
+                quartelColumn.appendChild(guarnicaoButton);
+                guarnicoesGrid.appendChild(quartelColumn);
+            }
+        });
+
+        const guarnicaoButtons = document.querySelectorAll('.guarnicao-button');
+        guarnicaoButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.guarnicao-button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                const modalSourceData = button.querySelector('.modal-source-data');
+                if (modalSourceData) {
+                    modalContentDiv.innerHTML = modalSourceData.innerHTML;
+                    modalOverlay.classList.add('active');
+                }
+            });
+        });
+
+        window.closeModal = () => {
+            modalOverlay.classList.remove('active');
+            modalContentDiv.innerHTML = '';
+            document.querySelectorAll('.guarnicao-button').forEach(btn => btn.classList.remove('active'));
+        };
+
+        modalOverlay.addEventListener('click', (event) => {
+            if (event.target === modalOverlay) {
+                window.closeModal();
+            }
+        });
+    });
+</script>
+</body>
+</html>
